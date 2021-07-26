@@ -1,0 +1,384 @@
+call plug#begin()
+Plug 'preservim/NERDTree'
+Plug 'davidhalter/jedi-vim'
+Plug 'brooth/far.vim'
+Plug 'fatih/vim-go'
+Plug 'vlime/vlime', {'rtp': 'vim/'}
+call plug#end()
+set nu
+set autoindent
+"set smartindent
+set indentexpr=Test()
+au filetype go inoremap <buffer> . .<C-x><C-o>
+"au filetype html inoremap <buffer> < <<C-x><C-o>
+"set cursorline cursorcolumn
+
+nmap <C-a>q bi"<ESC>ea"<ESC>
+nmap <C-a>l <ESC>:call ListAddQuets()<CR>
+vmap <C-a>c I#<ESC><ESC>
+vmap <C-a>z <ESC>:call ExctractLst()<CR>
+vmap <C-a>u <ESC>:call LowcaseUnderScore()<CR>
+" Select visual html block and wrapped as comment
+autocmd FileType html vmap <buffer> <C-a>h <ESC>:call HtmlMultiLinesComments()<CR>
+" Low case current word
+imap <C-a>u <ESC>guaw<ESC>ea
+imap <C-a>j <ESC>jF>a
+" Abbrev for Django
+autocmd FileType python iabbrev <buffer>  _djb = models.BooleanField()
+autocmd FileType python iabbrev <buffer>  _djm = models.Model
+" Abbrev for Python
+autocmd FileType python iabbrev <buffer>  _format <ESC>:call PythonFormat()<CR>
+autocmd FileType python iabbrev <buffer>  _pp pp('')<ESC>:call Pprint()<CR>
+autocmd FileType python iabbrev <buffer>  _cc <ESC>:call AddCommentsInPyFunction()<CR>o
+autocmd FileType python iabbrev <buffer>  _pd import pdb<ESC>opdb.set_trace()<ESC>
+autocmd FileType python iabbrev <buffer>  _ll <ESC>Bilist(<ESC>Ea)
+autocmd FileType python iabbrev <buffer>  _kl <BS>.keys()<ESC>Bilist(<ESC>Ea)
+autocmd FileType python iabbrev <buffer>  _kv <BS>.values()<ESC>Bilist(<ESC>Ea)
+autocmd FileType python iabbrev <buffer>  _mld map(lambda x: x,)<ESC>Fxa
+autocmd FileType python iabbrev <buffer>  _fld filter(lambda x: x,)<ESC>Fxa
+autocmd FileType python iabbrev <buffer>  _ini <ESC>:call InitVar()<CR>
+autocmd FileType python iabbrev <buffer>  _inic <ESC>:call AddCommentsInPyFunction()<CR><ESC>:call ClassCommentsSetVar()<CR>
+autocmd FileType python iabbrev <buffer>  _cl class Foo:<ESC>odef __init__(self,):<ESC>F,a
+autocmd FileType python iabbrev <buffer>  _nm if __name__ == "__main__":<ESC>o
+autocmd FileType python iabbrev <buffer>  _sf (self, ):<ESC>F,a
+autocmd FileType python iabbrev <buffer>  _c <ESC>o"""<ESC>o"""<ESC>O
+autocmd FileType python iabbrev <buffer>  _df def foo(x):<CR><left>
+autocmd FileType python iabbrev <buffer>  _sdf def foo(self, x):<CR><left>
+autocmd FileType python iabbrev <buffer>  _dict1 <ESC>:call CreateDict()<CR>
+autocmd FileType python iabbrev <buffer>  _dict2 <ESC>:call CreateDict2()<CR>
+autocmd FileType python iabbrev <buffer>  _set <ESC>F[ilist(set(<ESC>f]a))
+autocmd FileType python iabbrev <buffer>  _set2 <ESC>Bilist(set(<ESC>Ea))
+autocmd FileType python iabbrev <buffer>  _enum <ESC>:call PythonEnum()<CR>
+autocmd FileType python iabbrev <buffer>  _range <ESC>:call PythonRange()<CR>
+autocmd FileType python iabbrev <buffer>  _models <ESC>:call PythonDjangoModels()<CR>
+" Abbrev for html
+autocmd FileType html set omnifunc=htmlcomplete#CompleteTags
+autocmd FileType html iabbrev <buffer> _div <div><ESC>o</div><ESC><up>o
+autocmd FileType html iabbrev <buffer> _i <i></i><ESC>F>
+autocmd FileType html iabbrev <buffer> _b <b></b><ESC>F>
+autocmd FileType html iabbrev <buffer> _u <u></u><ESC>F>
+autocmd FileType html iabbrev <buffer> _ul <ESC>:call CreateLst("ul")<CR>
+autocmd FileType html iabbrev <buffer> _ol <ESC>:call CreateLst("ol")<CR>
+autocmd FileType html iabbrev <buffer> _table <ESC>:call CreateTable()<CR>
+autocmd FileType html iabbrev <buffer> _title <ESC>i<title><ESC>mqa</title><ESC>`q
+autocmd FileType html iabbrev <buffer> _title2 <ESC>:call CreateTitle()<CR>
+autocmd FileType html iabbrev <buffer> _cc <!----><left><left><left>
+autocmd FileType html iabbrev <buffer> _cc2 <ESC>:call OneLineCommentHtml()<CR>
+autocmd FileType html iabbrev <buffer> _> <ESC>:call HtmlCloseTag()<CR>
+"autocmd BufNewFile *.html execute "normal! i<!DOCTYPE html>\<ESC>o<html>\<ESC>o<head>\<ESC>o</head>\<ESC>o<body>\<ESC>mqo</body>\<ESC>o</html>\<ESC>`q"
+autocmd BufNewFile *.html  :-1read $HOME/.vim/templates/html/index.html | normal 6gg17|a
+
+fun! Test()
+	let lnum = prevnonblank(v:lnum-1)
+	let ind = indent(lnum)
+	return ind
+endfun!
+
+fun! ListAddQuets()
+	let x= getline('.')
+	let cl = line('.')
+	"if cl >1
+	"	exec "normal ddo"
+	"else
+	"	exec "normal dd"
+	"endif
+	"exec "normal cc"
+	"exec "normal mq"
+	let y = split(x, ",")
+	let s = ''
+	let c=0
+	let len_y = len(y)
+	for i in y
+		let t = substitute(i, '\v^\s*([^ ]+)\s*$', '\1', '') 
+		let c +=1
+		if c == 1
+			let s =  '["' . t .'", '
+		elseif c== len_y
+			let s = s . '"' . t . '"]'
+		elseif c > 1
+			let s = s . '"' . t .'", '
+		endif
+	endfor
+	exec "normal cc" . s
+	echo s
+endfun!
+
+fun! PythonDjangoModels()
+	let dtypes ={'txt':'models.TextField()','int':'models.IntegerField()','float':'models.FloatField()','char':'models.CharField()','bool':'models.BooleanField()', 'fo': 'models.ForeignKey(', 'many':'models.ManyToManyField('}
+	let pl = line('.')
+	let x  = getline('.')
+	let y = split(x, ",")
+	let flag = 1 
+	for i in y
+		if flag == 1
+			exec "normal ddoclass " . i . "(models.Model):"
+			let flag = 0
+		else
+			let tp = split(i,":")
+			let n = tp[0]
+			let nt = tp[1]
+			let s_n = substitute(n, '\v^\s*([^ ]+)\s*$', '\1', '') 
+			let s_nt = substitute(nt, '\v^\s*([^ ]+)\s*$', '\1', '') 
+			if stridx(s_nt,";") == -1
+				let s_nt_v = dtypes[s_nt]
+			        exec "normal o" . s_n . "=" . s_nt_v
+			else
+				let s_nt2 = split(s_nt,";")
+				let dt = s_nt2[0]
+				let table = s_nt2[1]
+				let s_nt_v = dtypes[dt]
+				if dt == 'fo'
+					exec "normal o" . n . "=" . s_nt_v   . table . ", on_delete=models.CASCADE)"
+				elseif dt == 'many'
+					exec "normal o" . n . "=" . s_nt_v   . table . ")"
+				endif
+			endif
+		endif
+	endfor
+endfun!
+
+
+fun! PythonRange()
+	let pl = line('.') -1
+	let x = getline('.')
+	let t = substitute(x, '\v^\s*([^ ]+)\s*$', '\1', '') 
+	"if stridx(getline(pl),"def") > -1
+	"	exec "normal ccfor i in range(0,len(" . t . ")):"
+	"else
+	"	exec "normal ccfor i in range(0,len(" . t . ")):"
+	"endif
+	exec "normal ccfor i in range(0,len(" . t . ")):"
+endfun!
+
+fun! PythonEnum()
+	let pl = line('.') -1
+	let x = getline('.')
+	let t = substitute(x, '\v^\s*([^ ]+)\s*$', '\1', '') 
+	if stridx(getline(pl),"def") > -1
+		exec "normal ddofor k,i in enumerate(" . t . "):"
+	else
+		exec "normal ddifor k,i in enumerate(" . t . "):"
+	endif
+endfun!
+
+fun! HtmlCloseTag()
+	exec "normal i>\<ESC>mqF<\<right>viwyA</"
+	exec "normal pa>\<ESC>`qa"
+endfun!
+
+fun! CreateDict2()
+	exec "normal ^xf]xf[xf]x"
+	let fl = line('.')
+	let x = getline('.')
+	let y = split(x, 'v')
+	let l1 = split(y[0], ",")
+	let l2 = split(y[1], ",")
+	let c=0
+	exec "normal od={\<ESC>o"
+	for i in l1
+		let t = substitute(i, '\v^\s*([^ ]+)\s*$', '\1', '') 
+		let t2 = substitute(l2[c], '\v^\s*([^ ]+)\s*$', '\1', '') 
+		exec "normal i" . t . ":" . t2 . "\<ESC>o"
+		let c+=1
+	endfor
+	exec "normal i}"
+	exec "normal " . fl . "ggdd"
+endfun!
+
+fun! CreateDict()
+	exec "normal F[xf]x"
+	let x = getline('.')
+	exec "normal dd"
+	exec "normal od={\<ESC>o"
+	let c = 0
+	let y = split(x, ",")
+	for i in y
+		let c +=1
+		let t = substitute(i, '\v^\s*([^ ]+)\s*$', '\1', '') 
+		exec "normal i" . c . ":" . t . "\<ESC>o"
+	endfor
+	exec "normal i}"
+	echo x
+endfun!
+
+fun! LowcaseUnderScore()
+	 let [line_start, column_start] = getpos("'<")[1:2]
+	 let [line_end, column_end] = getpos("'>")[1:2]
+	 if line_start == line_end
+		 exec "normal " . line_start . "gg" . column_start . "|v" . column_end . "|u" 
+		 let line = getline(line_start)
+		 let curr_sel_ln = line[column_start-1:column_end]
+		 let x = join(split(curr_sel_ln,""),"_")
+		 exec "normal " . line_start . "gg" . column_start . "|v" . column_end . "|di" . x
+	endif
+endfun!
+
+fun! ExctractLst()
+	let f = line("'<")
+	let l = line("'>")
+	let d = []
+	for i in range(f,l)
+		let t = split(getline(i),"=")[0]
+		let t2 = substitute(t, '\v^\s*([^ ]+)\s*$', '\1', '') 
+		let d2 = add(d, t2)
+	endfor
+	echo d
+endfun!
+
+fun! HtmlMultiLinesComments()
+	let f = line("'<")
+	let l = line("'>")+1
+	exec "normal " . f . "ggO<!--"
+	exec "normal " . l. "ggo-->"
+	echo [f, l]
+endfun!
+
+fun! CreateTitle()
+	let x = split(getline('.'),"")
+	let y = join(x)
+	exec "normal mq"
+	exec "normal ddO<title>" . y . "</title>\<ESC>`q"
+endfun!
+
+fun! OneLineCommentHtml()
+	let l = line('.') -1 
+	let x = split(getline('.'),"")
+	let y = join(x)
+	exec "normal mq"
+	exec "normal cc<!--" . y . "-->\<ESC>`q" 
+endfun!
+
+fun! CreateTable()
+	let x = split(getline('.'),"")
+	let tr_n = str2nr(x[0])
+	let td_n = str2nr(x[1])
+	exec "normal cc<table>"
+	for i in range(1,tr_n)
+		exec "normal o<tr>"
+		for j in range(1, td_n)
+			if i==1 && j==1
+				exec "normal o<td>\<ESC>mqa</td>"
+			else
+				exec "normal o<td></td>"
+			endif
+		endfor
+		exec "normal o</tr>"
+	endfor
+	exec "normal o</table>\<ESC>`q"
+endfun!
+
+fun! CreateLst(t)
+	let lst = a:t
+	let x = getline('.')
+	let y = str2nr(split(x,"")[0])
+	exec "normal cc<" . lst .">"
+	for i in range(1, y)
+		if i == 1
+			exec "normal o<li>\<ESC>mqa</li>"
+		else
+			exec "normal o<li></li>"
+		endif
+	endfor
+	exec "normal o</" . lst  . ">\<ESC>`q"
+endfun!
+fun! OpenHtmlFile()
+	execute "i<html>"
+endfun!
+
+fun! PythonFormat()
+	let cl = line('.')
+	let x = getline('.')
+	let y = split(x, ",")
+	exec "normal ccprint(\""
+	let c = 0
+	for i in y
+		let c +=1
+		let t = substitute(i, '\v^\s*([^ ]+)\s*$', '\1', '') 
+		if c < len(y)
+			exec "normal a" . t . ":{},"
+		else
+			exec "normal a" . t . ":{}"
+		endif
+	endfor
+	let t2 = substitute(x, '\v^\s*([^ ]+)\s*$', '\1', '') 
+	exec 'normal a".format(' . t2 . '))'
+	echo cl
+	exec "normal " . cl . "gg^"
+endfun!
+
+fun! ClassCommentsSetVar()
+	let x = search('_', 'b')
+	execute "normal " . x . "ggA"
+	exec "call InitVar()"
+endfun!
+
+fun! InitVar()
+	let x = getline('.')
+	let y = split(x, "(")[1]
+	let y2 = split(y,")")
+	let y3 = split(y2[0],",")
+	let existComm = search('"','b')
+	if existComm >0
+		execute "normal " . existComm . "gg"
+	endif
+	for par in y3
+		if par != "self"
+			let t= substitute(par, '\v^\s*([^ ]+)\s*$', '\1', '') 
+			execute "normal oself." . t . "=" .  t
+		endif
+	endfor
+endfun
+
+fun! ReturnEmptySpace(x)
+	let e = a:x
+	let t = ' '
+	for i in range(1,e)
+		let t = t .' '
+	endfor
+	return t
+endfun!
+fun! AddCommentsInPyFunction()
+	let fl = line('.') -1
+	let x = getline(fl)
+	let y = split(x, "(")[1]
+	let y2 = split(y,")")
+	let y3 = split(y2[0],",")
+	"let cl = line('.') + 1
+	exec 'normal i"""'
+	let ci = indent('.')
+	let cl = line('.')
+	for i in y3
+		exec 'normal o'
+		let t = ReturnEmptySpace(ci-1)
+		exec 'normal 0i' . t . ':param ' . i . ':'
+	endfor
+	exec "normal o"
+	exec "normal 0i" . t . ":return:"
+	exec 'normal o'
+	exec 'normal 0i' . t . '"""'
+endfun!
+
+fun! Pprint()
+	let f = line('.') + 1
+	if search('pprint import pprint as pp') == 0
+		if search('import') ==  0
+			execute "normal ggifrom pprint import pprint as pp\n"
+			execute "normal " . f . "gg"
+			let c = col('.') + 3
+			execute "normal " . c . "|"
+		else
+			let y = search('import', 'b') + 1
+			execute "normal " . y ."ggifrom pprint import pprint as pp\n"
+			execute "normal " . f . "gg"
+			let c = col('.') + 3
+			execute "normal " . c . "|"
+		endif
+	else
+		execute "normal " . f . "gg"
+		let c = col('.') + 3
+		execute "normal " . c . "|"
+	endif
+	return "pp('')"
+	
+endfun
+
